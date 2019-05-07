@@ -1,0 +1,6 @@
+/Users/syd/Documents/GitHub/video-stream-analytics/video-stream-processor/src/main/java/com/iot/video/app/spark/util/VideoEventData.java
+/Users/syd/Documents/GitHub/video-stream-analytics/video-stream-processor/src/main/java/com/iot/video/app/spark/processor/VideoMotionDetector.java
+/Users/syd/Documents/GitHub/video-stream-analytics/video-stream-processor/src/main/java/com/iot/video/app/spark/processor/VideoRecognizer.java
+/Users/syd/Documents/GitHub/video-stream-analytics/video-stream-processor/src/main/java/com/iot/video/app/spark/util/PropertyFileReader.java
+/Users/syd/Documents/GitHub/video-stream-analytics/video-stream-processor/src/main/java/com/iot/video/app/spark/processor/VideoStreamProcessor.java
+/Users/syd/Documents/GitHub/video-stream-analytics/video-stream-processor/src/main/java/com/iot/video/app/spark/processor/TinyYoloDetection.java

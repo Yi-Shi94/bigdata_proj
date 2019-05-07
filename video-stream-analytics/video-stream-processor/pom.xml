@@ -2,6 +2,7 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>video-stream-processor</groupId>
+
 	<artifactId>video-stream-processor</artifactId>
 	<version>1.0.0</version>
 
@@ -33,14 +34,40 @@
 			<artifactId>log4j</artifactId>
 			<version>1.2.17</version>
 		</dependency>
-		<!-- opencv -->
+		<!-- https://mvnrepository.com/artifact/nu.pattern/opencv -->
 		<dependency>
 			<groupId>org.openpnp</groupId>
 			<artifactId>opencv</artifactId>
 			<version>3.2.0-0</version>
 		</dependency>
-	</dependencies>
 
+		<!-- deeplearning4j -->
+		<dependency>
+			<groupId>org.deeplearning4j</groupId>
+			<artifactId>deeplearning4j-core</artifactId>
+			<version>1.0.0-beta3</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.nd4j</groupId>
+			<artifactId>nd4j-native-platform</artifactId>
+			<version>1.0.0-beta3</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.deeplearning4j</groupId>
+			<artifactId>deeplearning4j-zoo</artifactId>
+			<version>1.0.0-beta3</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.deeplearning4j</groupId>
+			<artifactId>deeplearning4j-ui_2.10</artifactId>
+			<version>1.0.0-beta3</version>
+		</dependency>
+
+
+	</dependencies>
 
 	<build>
 		<resources>

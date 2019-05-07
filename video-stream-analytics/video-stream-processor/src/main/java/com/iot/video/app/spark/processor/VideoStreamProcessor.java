@@ -41,7 +41,7 @@ public class VideoStreamProcessor {
 		      .master(prop.getProperty("spark.master.url"))
 		      .getOrCreate();	
 	
-	//directory to save image files with motion detected
+	//directory to save image files with detector operated
 	final String processedImageDir = prop.getProperty("processed.output.dir");
 	logger.warn("Output directory for saving processed images is set to "+processedImageDir+". This is configured in processed.output.dir key of property file.");
 	
@@ -89,7 +89,7 @@ public class VideoStreamProcessor {
 				existing = state.get();
 			}
 			//detect motion
-			VideoEventData processed = VideoMotionDetector.detectMotion(key,values,processedImageDir,existing);
+			VideoEventData processed = VideoObjectDetector.objectDetect(key,values,processedImageDir,existing);
 			
 			//update last processed
 			if(processed != null){

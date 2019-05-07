@@ -1,0 +1,4 @@
+com/iot/video/app/kafka/collector/VideoStreamCollector.class
+com/iot/video/app/kafka/collector/VideoEventGenerator.class
+com/iot/video/app/kafka/collector/VideoEventGenerator$EventGeneratorCallback.class
+com/iot/video/app/kafka/util/PropertyFileReader.class

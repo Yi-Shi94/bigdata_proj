@@ -1,5 +1,8 @@
 package com.iot.video.app.spark.processor;
 
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferByte;
+import java.awt.image.WritableRaster;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -8,6 +11,9 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.apache.log4j.Logger;
+import org.bytedeco.javacv.Java2DFrameConverter;
+import org.bytedeco.javacv.OpenCVFrameConverter;
+
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -32,18 +38,9 @@ public class VideoMotionDetector implements Serializable {
 	
 	//load native lib
 	static {
-		 System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+		nu.pattern.OpenCV.loadLocally();
 	}
-	
-	/**
-	 * Method to detect motion from batch of frames
-	 * 
-	 * @param camId camera Id
-	 * @param frames list of VideoEventData
-	 * @param outputDir directory to save image files
-	 * @return last processed VideoEventData 
-	 * @throws Exception
-	 */
+
 	public static VideoEventData detectMotion(String camId, Iterator<VideoEventData> frames, String outputDir, VideoEventData previousProcessedEventData) throws Exception {
 		VideoEventData currentProcessedEventData = new VideoEventData();
 		Mat frame = null;
@@ -53,7 +50,8 @@ public class VideoMotionDetector implements Serializable {
 		Mat deltaFrame = new Mat();
 		Mat thresholdFrame = new Mat();	
 		ArrayList<Rect> rectArray = new ArrayList<Rect>();
-		
+		TinyYoloDetection tinyYoloDetectiony = new TinyYoloDetection();
+
 		//previous processed frame 
 		if (previousProcessedEventData != null) {
 			logger.warn("cameraId=" + camId + " previous processed timestamp=" + previousProcessedEventData.getTimestamp());
@@ -69,10 +67,12 @@ public class VideoMotionDetector implements Serializable {
 		while(frames.hasNext()){
 			sortedList.add(frames.next());
 		}
+
 		sortedList.sort(Comparator.comparing(VideoEventData::getTimestamp));
 		logger.warn("cameraId="+camId+" total frames="+sortedList.size());
 		
 		//iterate and detect motion
+		int index = 0;
 		for (VideoEventData eventData : sortedList) {
 			frame = getMat(eventData);
 			copyFrame = frame.clone();
@@ -82,6 +82,8 @@ public class VideoMotionDetector implements Serializable {
 			logger.warn("cameraId=" + camId + " timestamp=" + eventData.getTimestamp());
 			//first
 			if (firstFrame != null) {
+				//tinyYoloDetectiony.markWithBoundingBox(transformFormat(frame),frame.width(),frame.height(),true,"pic"+index);
+
 				Core.absdiff(firstFrame, grayFrame, deltaFrame);
 				Imgproc.threshold(deltaFrame, thresholdFrame, 20, 255, Imgproc.THRESH_BINARY);
 				rectArray = getContourArea(thresholdFrame);
@@ -90,17 +92,19 @@ public class VideoMotionDetector implements Serializable {
 					while (it2.hasNext()) {
 						Rect obj = it2.next();
 						Imgproc.rectangle(copyFrame, obj.br(), obj.tl(), new Scalar(0, 255, 0), 2);
-					}
+
 					logger.warn("Motion detected for cameraId=" + eventData.getCameraId() + ", timestamp="+ eventData.getTimestamp());
 					//save image file
 					saveImage(copyFrame, eventData, outputDir);
+					}
 				}
-			  }
-				firstFrame = grayFrame;
-				currentProcessedEventData = eventData;
-		   }
-			return currentProcessedEventData;
+
+			}
+			firstFrame = grayFrame;
+			currentProcessedEventData = eventData;
 		}
+			return currentProcessedEventData;
+	}
 	
 	//Get Mat from byte[]
 	private static Mat getMat(VideoEventData ed) throws Exception{
@@ -138,4 +142,30 @@ public class VideoMotionDetector implements Serializable {
 			logger.error("Couldn't save images to path "+outputDir+".Please check if this path exists. This is configured in processed.output.dir key of property file.");
 		}
 	}
+
+	public static BufferedImage matToBufferedImage(Mat frame) {
+		int type = 0;
+		if (frame.channels() == 1) {
+			type = BufferedImage.TYPE_BYTE_GRAY;
+		} else if (frame.channels() == 3) {
+			type = BufferedImage.TYPE_3BYTE_BGR;
+		}
+		BufferedImage image = new BufferedImage(frame.width() ,frame.height(), type);
+		WritableRaster raster = image.getRaster();
+		DataBufferByte dataBuffer = (DataBufferByte) raster.getDataBuffer();
+		byte[] data = dataBuffer.getData();
+		frame.get(0, 0, data);
+		return image;
+	}
+
+
+	public static org.bytedeco.javacpp.opencv_core.Mat bufferedImageToMat(BufferedImage bi) {
+		OpenCVFrameConverter.ToMat cv = new OpenCVFrameConverter.ToMat();
+		return cv.convertToMat(new Java2DFrameConverter().convert(bi));
+	}
+
+	public static org.bytedeco.javacpp.opencv_core.Mat transformFormat(Mat frame){
+		return bufferedImageToMat(matToBufferedImage(frame));
+	}
+
 }

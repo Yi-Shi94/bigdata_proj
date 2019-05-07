@@ -9,6 +9,7 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.log4j.Logger;
+
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.Size;
@@ -41,7 +42,7 @@ public class VideoEventGenerator implements Runnable {
 	
 	//load OpenCV native lib
 	static {
-        nu.pattern.OpenCV.loadShared();
+		nu.pattern.OpenCV.loadLocally();
 	}
 
 	@Override

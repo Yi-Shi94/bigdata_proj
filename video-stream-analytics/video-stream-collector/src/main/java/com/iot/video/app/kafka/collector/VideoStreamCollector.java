@@ -20,7 +20,6 @@ public class VideoStreamCollector {
 	private static final Logger logger = Logger.getLogger(VideoStreamCollector.class);
 
 	public static void main(String[] args) throws Exception {
-		
 		// set producer properties
 		Properties prop = PropertyFileReader.readPropertyFile();	
 		Properties properties = new Properties();
@@ -33,7 +32,6 @@ public class VideoStreamCollector {
 		properties.put("compression.type", prop.getProperty("kafka.compression.type"));
 		properties.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
 		properties.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-		
 		// generate event
 		Producer<String, String> producer = new KafkaProducer<String, String>(properties);
 		generateIoTEvent(producer,prop.getProperty("kafka.topic"),prop.getProperty("camera.id"),prop.getProperty("camera.url"));

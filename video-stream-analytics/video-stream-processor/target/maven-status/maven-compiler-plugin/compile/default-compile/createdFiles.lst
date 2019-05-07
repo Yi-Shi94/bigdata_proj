@@ -1,0 +1,8 @@
+com/iot/video/app/spark/processor/VideoMotionDetector.class
+com/iot/video/app/spark/util/VideoEventData.class
+com/iot/video/app/spark/processor/VideoStreamProcessor$2.class
+com/iot/video/app/spark/processor/TinyYoloDetection.class
+com/iot/video/app/spark/processor/VideoStreamProcessor$1.class
+com/iot/video/app/spark/util/PropertyFileReader.class
+com/iot/video/app/spark/processor/VideoRecognizer.class
+com/iot/video/app/spark/processor/VideoStreamProcessor.class
