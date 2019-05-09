@@ -9,10 +9,11 @@ import org.apache.log4j.Logger;
 import com.iot.video.app.kafka.util.PropertyFileReader;
 
 /**
- *  Class to configure Kafka Producer and connect to Video camera url.
- *  
- * @author abaghel
+ * Class to configure Kafka Producer and connect to Video camera url.
  *
+ * Idea and base code from @abaghel's blog article https://www.infoq.com/articles/video-stream-analytics-opencv
+ *
+ *  @ Y.Shi 2019
  */
 
 public class VideoStreamCollector {

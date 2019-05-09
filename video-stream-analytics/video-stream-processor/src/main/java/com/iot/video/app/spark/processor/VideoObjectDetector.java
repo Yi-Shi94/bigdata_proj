@@ -1,9 +1,10 @@
 package com.iot.video.app.spark.processor;
 
-import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferByte;
-import java.awt.image.WritableRaster;
+import java.io.File;
+import java.io.IOException;
 import java.io.Serializable;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
@@ -28,7 +29,6 @@ import org.nd4j.linalg.api.ndarray.INDArray;
  *
  */
 
-
 public class VideoObjectDetector implements Serializable {
     private static final Logger logger = Logger.getLogger(VideoMotionDetector.class);
 
@@ -43,7 +43,7 @@ public class VideoObjectDetector implements Serializable {
         //Speed speedSetting = Speed.MEDIUM;  // Almost Real-time and medium accuracy
         //Speed speedSetting = Speed.SLOW;    // High accuracy, really fucking slow
 
-        Speed speedSetting = Speed.FAST;
+        Speed speedSetting = Speed.MEDIUM;
 
         TinyYoloDetection tinyYoloDetection = new TinyYoloDetection(speedSetting);
         VideoEventData currentProcessedEventData = new VideoEventData();
@@ -51,6 +51,7 @@ public class VideoObjectDetector implements Serializable {
 
         Mat processedImageMat = null;
 
+        //To Be Implemented
         //Sort by timestamp, in a sorted linked list, I am considering to show image in sequence with display.
         //However, Kafka seems forbidding me imshow during runtime, I am considering a standalone process which start with a display, keep reading images
         //from processed-data folder. Meanwhile Kafka may output image in different order from my indexes, be careful
@@ -73,25 +74,28 @@ public class VideoObjectDetector implements Serializable {
         }
 
         sortedList.sort(Comparator.comparing(VideoEventData::getTimestamp));
+
         logger.warn("cameraId="+camId+" total frames="+sortedList.size());
-        System.out.println("Finish sorting\n");
+        String id ;
+        System.out.println("Finish sorting this batch\n");
+
         //iterate and detect motion
         int index = 0;
 
         for (VideoEventData eventData : sortedList) {
+            if(index>42) break;
             Mat mat = getMat(eventData);
             INDArray imageArr = loader.asMatrix(mat);
 
             ImagePreProcessingScaler imagePreProcessingScaler = new ImagePreProcessingScaler(0, 1);
             imagePreProcessingScaler.transform(imageArr);
 
-            String idInfo = "cameraId=" + camId + "-T-timestamp=" +index;
+            String idInfo = "cameraId=" + camId + "-T-timestamp=" + eventData.getTimestamp().toString();
             logger.warn(idInfo);
 
             tinyYoloDetection.predictBoundingBoxes(imageArr);
             if (tinyYoloDetection.existPredictionBox()) {
                 tinyYoloDetection.drawBoundingBoxesRectangles(mat);
-
                 saveImage(mat, idInfo, outputDir);
             } else {
                 System.out.println("No prediction box found in this frame, skipped");
@@ -123,5 +127,6 @@ public class VideoObjectDetector implements Serializable {
             System.out.println("No address valid");
         }
     }
+
 
 }

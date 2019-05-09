@@ -29,10 +29,13 @@ import com.iot.video.app.spark.util.VideoEventData;
 
 /**
  * Class to detect motion from video frames using OpenCV library.
- * 
- * @author abaghel
  *
+ * Idea and majority of code from @abaghel's blog article https://www.infoq.com/articles/video-stream-analytics-opencv
+ *
+ *  @ Y.Shi 2019
  */
+
+
 public class VideoMotionDetector implements Serializable {	
 	private static final Logger logger = Logger.getLogger(VideoMotionDetector.class);	
 	

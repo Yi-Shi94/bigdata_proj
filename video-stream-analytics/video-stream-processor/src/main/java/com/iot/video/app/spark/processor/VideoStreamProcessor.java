@@ -23,17 +23,17 @@ import com.iot.video.app.spark.util.VideoEventData;
 
 /**
  * Class to consume incoming JSON messages from Kafka and process them using Spark Structured Streaming.
- *  
- * @author abaghel
+ *
  *
  */
+
 public class VideoStreamProcessor {
   private static final Logger logger = Logger.getLogger(VideoStreamProcessor.class);	
 	
   public static void main(String[] args) throws Exception {
 	//Read properties
 	Properties prop = PropertyFileReader.readPropertyFile();
-	
+
 	//SparkSesion
 	SparkSession spark = SparkSession
 		      .builder()
@@ -42,9 +42,7 @@ public class VideoStreamProcessor {
 		      .getOrCreate();	
 	
 	//directory to save image files with detector operated
-	final String processedImageDir = prop.getProperty("processed.output.dir");
-	logger.warn("Output directory for saving processed images is set to "+processedImageDir+". This is configured in processed.output.dir key of property file.");
-	
+
 	//create schema for json message
 	StructType schema =  DataTypes.createStructType(new StructField[] { 
 			DataTypes.createStructField("cameraId", DataTypes.StringType, true),
@@ -86,13 +84,18 @@ public class VideoStreamProcessor {
 			if (state.exists()) {
 				existing = state.get();
 			}
-			//detection
-			//VideoEventData processed = VideoObjectDetector.objectDetect(key,values,processedImageDir,existing);
+
+			String processedImageDir = prop.getProperty("processed.output.dir")+"/key";
+			logger.warn("Output directory for saving processed images is set to "+processedImageDir+". This is configured in processed.output.dir key of property file.");
+
+			//Detection
 			VideoEventData processed = VideoObjectDetector.objectDetect(key,values,processedImageDir,existing);
+
 			//update last processed
 			if(processed != null){
 				state.update(processed);
 			}
+
 			return processed;
 		}}, Encoders.bean(VideoEventData.class), Encoders.bean(VideoEventData.class));
 
@@ -105,6 +108,7 @@ public class VideoStreamProcessor {
 	 //await
      query.awaitTermination();
 	}
+
 }
 
 

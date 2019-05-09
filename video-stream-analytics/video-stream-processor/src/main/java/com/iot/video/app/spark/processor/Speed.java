@@ -27,8 +27,6 @@ public enum Speed {
         this.gridHeight = gridHeight;
     }
 
-
-
     @Override
     public String toString() {
         return name;
