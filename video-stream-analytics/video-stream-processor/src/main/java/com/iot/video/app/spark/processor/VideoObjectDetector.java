@@ -13,29 +13,21 @@ import java.util.List;
 import org.apache.log4j.Logger;
 import org.bytedeco.javacpp.BytePointer;
 
+
+import org.bytedeco.javacv.Frame;
+import org.bytedeco.javacv.OpenCVFrameConverter;
 import org.bytedeco.javacpp.opencv_core;
 import org.bytedeco.javacpp.opencv_highgui;
 import org.bytedeco.javacpp.opencv_imgcodecs;
 import org.bytedeco.javacv.Java2DFrameConverter;
 import org.bytedeco.javacv.OpenCVFrameConverter;
+
+import static com.iot.video.app.spark.processor.Speed.FAST;
+import static com.iot.video.app.spark.processor.Speed.MEDIUM;
 import static org.bytedeco.javacpp.opencv_core.*;
 import static org.bytedeco.javacpp.opencv_highgui.imshow;
 import static org.bytedeco.javacpp.opencv_imgproc.putText;
 import static org.bytedeco.javacpp.opencv_imgproc.rectangle;
-
-
-
-/*
-import org.opencv.core.Core;
-import org.opencv.core.CvType;
-import org.opencv.core.Mat;
-import org.opencv.core.MatOfPoint;
-import org.opencv.core.Rect;
-import org.opencv.core.Scalar;
-import org.opencv.core.Size;
-import org.opencv.imgcodecs.Imgcodecs;
-import org.opencv.imgproc.Imgproc;
-*/
 
 
 import com.iot.video.app.spark.util.VideoEventData;
@@ -47,40 +39,49 @@ import com.iot.video.app.spark.util.VideoEventData;
  * @author abaghel
  *
  */
+
+
 public class VideoObjectDetector implements Serializable {
     private static final Logger logger = Logger.getLogger(VideoMotionDetector.class);
-
+    static OpenCVFrameConverter.ToMat converterToMat = new OpenCVFrameConverter.ToMat();
     //load native lib
     static {
         nu.pattern.OpenCV.loadLocally();
     }
 
     public static VideoEventData objectDetect(String camId, Iterator<VideoEventData> frames, String outputDir, VideoEventData previousProcessedEventData) throws Exception {
+        Speed sp = Speed.FAST;
+        TinyYoloDetection tinyYoloDetection = new TinyYoloDetection(sp);
         VideoEventData currentProcessedEventData = new VideoEventData();
         Mat processedImageMat = null;
 
-        TinyYoloDetection tinyYoloDetection = new TinyYoloDetection();
-
         //sort by timestamp
         ArrayList<VideoEventData> sortedList = new ArrayList<VideoEventData>();
+        int indexx = 0;
         while(frames.hasNext()){
             sortedList.add(frames.next());
+            indexx += 1;
+            System.out.println(indexx);
         }
 
         sortedList.sort(Comparator.comparing(VideoEventData::getTimestamp));
         logger.warn("cameraId="+camId+" total frames="+sortedList.size());
-
+        System.out.println("Finish sorting\n");
         //iterate and detect motion
         int index = 0;
         for (VideoEventData eventData : sortedList) {
-            Mat frame = getMat(eventData);
-            String idInfo = "cameraId=" + camId + "-T-timestamp=" + eventData.getTimestamp();
+            Mat mat = getMat(eventData);
+            Frame frame = converterToMat.convert(mat);
+            String idInfo = "cameraId=" + camId + "-T-timestamp=" +index;
             logger.warn(idInfo);
-            processedImageMat = tinyYoloDetection.markWithBoundingBox(frame,frame.cols(),frame.rows(),true,"pic"+index);
-            saveImage(processedImageMat,idInfo,outputDir);
-            opencv_highgui.imshow(idInfo,processedImageMat);
+            System.out.println(frame.imageHeight+" "+frame.imageWidth);
+            //tinyYoloDetection.predictBoundingBoxes(frame);
+            //tinyYoloDetection.drawBoundingBoxesRectangles(frame,mat);
+            tinyYoloDetection.warmUp(sp,frame);
+            //saveImage(mat,idInfo,outputDir);
+            currentProcessedEventData = eventData;
         }
-        return null;
+        return currentProcessedEventData;
     }
 
     //Get Mat from byte[]
@@ -94,7 +95,15 @@ public class VideoObjectDetector implements Serializable {
         String imagePath = outputDir+idInfo+".png";
         logger.warn("Saving images to "+imagePath);
         //boolean result = cvSaveImage(imagePath, mat);
-        opencv_imgcodecs.imwrite(imagePath,mat);
+        if(mat==null){
+            System.out.println("Mat valid");
+        }
+        boolean result = opencv_imgcodecs.imwrite(imagePath,mat);
+        if(!result ){
+            System.out.println("No address valid");
+
+        }
+
     }
 
     /* open cv to javacpp cv

@@ -50,7 +50,6 @@ public class VideoMotionDetector implements Serializable {
 		Mat deltaFrame = new Mat();
 		Mat thresholdFrame = new Mat();	
 		ArrayList<Rect> rectArray = new ArrayList<Rect>();
-		TinyYoloDetection tinyYoloDetectiony = new TinyYoloDetection();
 
 		//previous processed frame 
 		if (previousProcessedEventData != null) {
@@ -82,8 +81,7 @@ public class VideoMotionDetector implements Serializable {
 			logger.warn("cameraId=" + camId + " timestamp=" + eventData.getTimestamp());
 			//first
 			if (firstFrame != null) {
-				//tinyYoloDetectiony.markWithBoundingBox(transformFormat(frame),frame.width(),frame.height(),true,"pic"+index);
-
+				//tinyYoloDetection.markWithBoundingBox(transformFormat(frame),frame.width(),frame.height(),true,"pic"+index);
 				Core.absdiff(firstFrame, grayFrame, deltaFrame);
 				Imgproc.threshold(deltaFrame, thresholdFrame, 20, 255, Imgproc.THRESH_BINARY);
 				rectArray = getContourArea(thresholdFrame);
@@ -94,8 +92,9 @@ public class VideoMotionDetector implements Serializable {
 						Imgproc.rectangle(copyFrame, obj.br(), obj.tl(), new Scalar(0, 255, 0), 2);
 
 					logger.warn("Motion detected for cameraId=" + eventData.getCameraId() + ", timestamp="+ eventData.getTimestamp());
-					//save image file
-					saveImage(copyFrame, eventData, outputDir);
+
+
+						saveImage(copyFrame, eventData, outputDir);
 					}
 				}
 
