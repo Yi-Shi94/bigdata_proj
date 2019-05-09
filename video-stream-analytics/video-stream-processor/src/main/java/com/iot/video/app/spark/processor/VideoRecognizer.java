@@ -2,29 +2,11 @@ package com.iot.video.app.spark.processor;
 
 import java.io.File;
 import com.iot.video.app.spark.util.VideoEventData;
-import org.datavec.api.records.reader.RecordReader;
-import org.datavec.api.records.reader.impl.csv.CSVRecordReader;
-import org.datavec.api.split.FileSplit;
-import org.deeplearning4j.datasets.datavec.RecordReaderDataSetIterator;
-import org.deeplearning4j.eval.Evaluation;
-import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
-import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
-import org.deeplearning4j.nn.conf.layers.DenseLayer;
-import org.deeplearning4j.nn.conf.layers.OutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
-import org.deeplearning4j.nn.weights.WeightInit;
-import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
 
 import org.deeplearning4j.util.ModelSerializer;
-import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.dataset.DataSet;
-import org.nd4j.linalg.dataset.SplitTestAndTrain;
-import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
-import org.nd4j.linalg.dataset.api.preprocessor.DataNormalization;
-import org.nd4j.linalg.dataset.api.preprocessor.NormalizerStandardize;
 import org.nd4j.linalg.factory.Nd4j;
-import org.nd4j.linalg.lossfunctions.LossFunctions;
 import org.opencv.core.Mat;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.slf4j.Logger;
@@ -38,7 +20,6 @@ public class VideoRecognizer {
     static {
         nu.pattern.OpenCV.loadLocally();
     }
-
 
     private static Logger logger = LoggerFactory.getLogger(VideoRecognizer.class);
     private final String modelDir = "src/main/resources/generatedModels/DL4J/DL4J_Iris_Model.zip";

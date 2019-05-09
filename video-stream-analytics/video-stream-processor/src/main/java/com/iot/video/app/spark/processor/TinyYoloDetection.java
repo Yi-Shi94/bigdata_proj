@@ -1,9 +1,5 @@
 package com.iot.video.app.spark.processor;
 
-import com.iot.video.app.spark.processor.*;
-import org.bytedeco.javacv.Frame;
-import org.bytedeco.javacv.Java2DFrameConverter;
-import org.bytedeco.javacv.OpenCVFrameConverter;
 import org.datavec.image.loader.NativeImageLoader;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.layers.objdetect.DetectedObject;
@@ -14,25 +10,23 @@ import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.api.preprocessor.ImagePreProcessingScaler;
 
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Stack;
 
-import static org.bytedeco.javacpp.opencv_core.*;
-import static org.bytedeco.javacpp.opencv_imgproc.putText;
-import static org.bytedeco.javacpp.opencv_imgproc.rectangle;
+import org.opencv.core.*;
+
+import static org.opencv.core.Core.FONT_HERSHEY_DUPLEX;
+import static org.opencv.imgproc.Imgproc.putText;
+import static org.opencv.imgproc.Imgproc.rectangle;
 
 public class TinyYoloDetection {
 
     private static final double DETECTION_THRESHOLD = 0.5;
-    //more accurate but slower
-    //less accurate but faster
     public static  ComputationGraph TINY_YOLO_V2_MODEL_PRE_TRAINED;
-
-    private final Stack<Frame> stack = new Stack();
+    private final Stack<INDArray> stack = new Stack();
     private final Speed selectedSpeed;
     private volatile List<DetectedObject> predictedObjects;
     private HashMap<Integer, String> map;
@@ -52,48 +46,39 @@ public class TinyYoloDetection {
         prepareTinyYOLOLabels();
     }
 
-
-    public void warmUp(Speed selectedSpeed, Frame imageMat) throws IOException {
-        try {
-            Yolo2OutputLayer outputLayer = (Yolo2OutputLayer) TINY_YOLO_V2_MODEL_PRE_TRAINED.getOutputLayer(0);
-            //BufferedImage read = ImageIO.read(new File("AutonomousDriving/src/main/resources/sample.jpg"));
-            INDArray indArray = prepareImage(imageMat, selectedSpeed.width, selectedSpeed.height);
-            INDArray results = TINY_YOLO_V2_MODEL_PRE_TRAINED.outputSingle(indArray);
-            outputLayer.getPredictedObjects(results, DETECTION_THRESHOLD);
-
-        } catch (IOException e) {
-            System.out.println("Failed to warm , ignoring for now");
-        }
+    public void warmUp(Speed selectedSpeed, INDArray imageArray) throws IOException {
+        Yolo2OutputLayer outputLayer = (Yolo2OutputLayer) TINY_YOLO_V2_MODEL_PRE_TRAINED.getOutputLayer(0);
+        //BufferedImage read = ImageIO.read(new File("AutonomousDriving/src/main/resources/sample.jpg"));
+        //INDArray indArray = prepareImage(imageArray, selectedSpeed.width, selectedSpeed.height);
+        INDArray results = TINY_YOLO_V2_MODEL_PRE_TRAINED.outputSingle(imageArray);
+        outputLayer.getPredictedObjects(results, DETECTION_THRESHOLD);
     }
 
-    public void push(Frame mat) {
-        stack.push(mat);
+    public void push(INDArray arr) {
+        stack.push(arr);
         System.out.println("sadasd"+stack.size());
     }
 
-    public void drawBoundingBoxesRectangles(Frame frame, Mat matFrame) {
-        if (invalidData(frame, matFrame)) return;
-
+    public void drawBoundingBoxesRectangles(Mat matFrame) {
         ArrayList<DetectedObject> detectedObjects = new ArrayList<>(predictedObjects);
         YoloUtils.nms(detectedObjects, 0.5);
         for (DetectedObject detectedObject : detectedObjects) {
-            createBoundingBoxRectangle(matFrame, frame.imageWidth, frame.imageHeight, detectedObject);
+            createBoundingBoxRectangle(matFrame, matFrame.cols(), matFrame.rows(), detectedObject);
         }
     }
 
-    private boolean invalidData(Frame frame, Mat matFrame) {
-        return predictedObjects == null || matFrame == null || frame == null;
+    public List<DetectedObject> getPredectionOfCurrentImage(){
+        return predictedObjects;
     }
 
-    public void predictBoundingBoxes(Frame frame) throws IOException {
+
+    public void predictBoundingBoxes(INDArray indArray) throws IOException {
         long start = System.currentTimeMillis();
         Yolo2OutputLayer outputLayer = (Yolo2OutputLayer) TINY_YOLO_V2_MODEL_PRE_TRAINED.getOutputLayer(0);
-        INDArray indArray = prepareImage(frame, selectedSpeed.width, selectedSpeed.height);
         System.out.println("stack of frames size " + stack.size());
         if (indArray == null) {
             return;
         }
-
         INDArray results = TINY_YOLO_V2_MODEL_PRE_TRAINED.outputSingle(indArray);
         if (results == null) {
             return;
@@ -103,12 +88,14 @@ public class TinyYoloDetection {
         System.out.println("Prediction time " + (System.currentTimeMillis() - start) / 1000d);
     }
 
-    private INDArray prepareImage(Frame frame, int width, int height) throws IOException {
-        if (frame == null || frame.image == null) {
-            return null;
-        }
-        BufferedImage convert = new Java2DFrameConverter().convert(frame);
-        return prepareImage(convert, width, height);
+    public boolean existPredictionBox(){
+        if(predictedObjects.size()>0) return true;
+        else return false;
+    }
+
+
+    private boolean invalidData( Mat matFrame) {
+        return predictedObjects == null || matFrame == null;
     }
 
     private INDArray prepareImage(BufferedImage convert, int width, int height) throws IOException {
@@ -144,7 +131,6 @@ public class TinyYoloDetection {
     }
 
     private void createBoundingBoxRectangle(Mat file, int w, int h, DetectedObject obj) {
-
         double[] xy1 = obj.getTopLeftXY();
         double[] xy2 = obj.getBottomRightXY();
         int predictedClass = obj.getPredictedClass();
@@ -152,13 +138,12 @@ public class TinyYoloDetection {
         int y1 = (int) Math.round(h * xy1[1] / selectedSpeed.gridHeight);
         int x2 = (int) Math.round(w * xy2[0] / selectedSpeed.gridWidth);
         int y2 = (int) Math.round(h * xy2[1] / selectedSpeed.gridHeight);
-        rectangle(file, new Point(x1, y1), new Point(x2, y2), Scalar.RED);
-        putText(file, groupMap.get(map.get(predictedClass)), new Point(x1 + 2, y2 - 2), FONT_HERSHEY_DUPLEX, 1, Scalar.GREEN);
+        rectangle(file, new Point(x1,y1), new Point(x2,y2),new Scalar(0,255,0));
+        putText(file, groupMap.get(map.get(predictedClass)), new Point(x1 + 2, y2 - 2), FONT_HERSHEY_DUPLEX, 1.0,new Scalar(255,0,0) );
     }
 
     private final String[] TINY_COCO_CLASSES = {"aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car",
             "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant",
             "sheep", "sofa", "train", "tvmonitor"};
-
 
 }

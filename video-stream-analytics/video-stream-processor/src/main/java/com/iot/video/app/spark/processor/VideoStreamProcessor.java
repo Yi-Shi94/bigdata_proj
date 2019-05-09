@@ -55,7 +55,6 @@ public class VideoStreamProcessor {
 			DataTypes.createStructField("data", DataTypes.StringType, true)
 			});
 
-
     Dataset<VideoEventData> ds = spark
       .readStream()
       .format("kafka")
@@ -83,16 +82,13 @@ public class VideoStreamProcessor {
 		public VideoEventData call(String key, Iterator<VideoEventData> values, GroupState<VideoEventData> state) throws Exception {
 			logger.warn("CameraId="+key+" PartitionId="+TaskContext.getPartitionId());
 			VideoEventData existing = null;
-
 			//check previous state
 			if (state.exists()) {
 				existing = state.get();
 			}
-
 			//detection
 			//VideoEventData processed = VideoObjectDetector.objectDetect(key,values,processedImageDir,existing);
 			VideoEventData processed = VideoObjectDetector.objectDetect(key,values,processedImageDir,existing);
-
 			//update last processed
 			if(processed != null){
 				state.update(processed);

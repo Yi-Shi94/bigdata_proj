@@ -8,60 +8,68 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
 import java.util.Iterator;
-import java.util.List;
+
 
 import org.apache.log4j.Logger;
-import org.bytedeco.javacpp.BytePointer;
 
+import org.nd4j.linalg.dataset.api.preprocessor.ImagePreProcessingScaler;
+import org.opencv.core.Mat;
 
-import org.bytedeco.javacv.Frame;
-import org.bytedeco.javacv.OpenCVFrameConverter;
-import org.bytedeco.javacpp.opencv_core;
-import org.bytedeco.javacpp.opencv_highgui;
-import org.bytedeco.javacpp.opencv_imgcodecs;
-import org.bytedeco.javacv.Java2DFrameConverter;
-import org.bytedeco.javacv.OpenCVFrameConverter;
-
-import static com.iot.video.app.spark.processor.Speed.FAST;
-import static com.iot.video.app.spark.processor.Speed.MEDIUM;
-import static org.bytedeco.javacpp.opencv_core.*;
-import static org.bytedeco.javacpp.opencv_highgui.imshow;
-import static org.bytedeco.javacpp.opencv_imgproc.putText;
-import static org.bytedeco.javacpp.opencv_imgproc.rectangle;
-
+import static org.opencv.imgcodecs.Imgcodecs.imwrite;
 
 import com.iot.video.app.spark.util.VideoEventData;
-
+import org.datavec.image.loader.NativeImageLoader;
+import org.nd4j.linalg.api.ndarray.INDArray;
 
 /**
- * Class to detect motion from video frames using OpenCV library.
+ * Class to use YOLO detection with Kafka
  *
- * @author abaghel
+ * @author Y.Shi 2019
  *
  */
 
 
 public class VideoObjectDetector implements Serializable {
     private static final Logger logger = Logger.getLogger(VideoMotionDetector.class);
-    static OpenCVFrameConverter.ToMat converterToMat = new OpenCVFrameConverter.ToMat();
+
     //load native lib
     static {
         nu.pattern.OpenCV.loadLocally();
     }
 
     public static VideoEventData objectDetect(String camId, Iterator<VideoEventData> frames, String outputDir, VideoEventData previousProcessedEventData) throws Exception {
-        Speed sp = Speed.FAST;
-        TinyYoloDetection tinyYoloDetection = new TinyYoloDetection(sp);
+
+        //Speed speedSetting = Speed.FAST;    // low accuracy, real-time
+        //Speed speedSetting = Speed.MEDIUM;  // Almost Real-time and medium accuracy
+        //Speed speedSetting = Speed.SLOW;    // High accuracy, really fucking slow
+
+        Speed speedSetting = Speed.FAST;
+
+        TinyYoloDetection tinyYoloDetection = new TinyYoloDetection(speedSetting);
         VideoEventData currentProcessedEventData = new VideoEventData();
+        NativeImageLoader loader = new NativeImageLoader(speedSetting.height, speedSetting.width, 3);
+
         Mat processedImageMat = null;
 
-        //sort by timestamp
+        //Sort by timestamp, in a sorted linked list, I am considering to show image in sequence with display.
+        //However, Kafka seems forbidding me imshow during runtime, I am considering a standalone process which start with a display, keep reading images
+        //from processed-data folder. Meanwhile Kafka may output image in different order from my indexes, be careful
+
+        //You may do something with MongoDB, one Idea is to use getPredictedObjects, you can get the box top left and bottom right
+        //points, store a time stamp and a prediction rectangle postion.
+
+        //You may also try those settings with different number of videos. I recommand to make them extremly short just like the creepy one with pillow and sofa.
+        //And add them to the report.
+
+        //Forget about UI, I think the code we have are unusable in our case.
+
+        //If you want, you can use recognizer to read h5 file, to perform recognition of other stuff (sign,text,...).
+
+
         ArrayList<VideoEventData> sortedList = new ArrayList<VideoEventData>();
-        int indexx = 0;
+
         while(frames.hasNext()){
             sortedList.add(frames.next());
-            indexx += 1;
-            System.out.println(indexx);
         }
 
         sortedList.sort(Comparator.comparing(VideoEventData::getTimestamp));
@@ -69,26 +77,38 @@ public class VideoObjectDetector implements Serializable {
         System.out.println("Finish sorting\n");
         //iterate and detect motion
         int index = 0;
+
         for (VideoEventData eventData : sortedList) {
             Mat mat = getMat(eventData);
-            Frame frame = converterToMat.convert(mat);
+            INDArray imageArr = loader.asMatrix(mat);
+
+            ImagePreProcessingScaler imagePreProcessingScaler = new ImagePreProcessingScaler(0, 1);
+            imagePreProcessingScaler.transform(imageArr);
+
             String idInfo = "cameraId=" + camId + "-T-timestamp=" +index;
             logger.warn(idInfo);
-            System.out.println(frame.imageHeight+" "+frame.imageWidth);
-            //tinyYoloDetection.predictBoundingBoxes(frame);
-            //tinyYoloDetection.drawBoundingBoxesRectangles(frame,mat);
-            tinyYoloDetection.warmUp(sp,frame);
-            //saveImage(mat,idInfo,outputDir);
+
+            tinyYoloDetection.predictBoundingBoxes(imageArr);
+            if (tinyYoloDetection.existPredictionBox()) {
+                tinyYoloDetection.drawBoundingBoxesRectangles(mat);
+
+                saveImage(mat, idInfo, outputDir);
+            } else {
+                System.out.println("No prediction box found in this frame, skipped");
+            }
             currentProcessedEventData = eventData;
+            index += 1;
         }
         return currentProcessedEventData;
     }
 
     //Get Mat from byte[]
     private static Mat getMat(VideoEventData ed) throws Exception{
-        return new Mat(ed.getRows(), ed.getCols(), CV_8UC(ed.getType()), new BytePointer(Base64.getDecoder().decode(ed.getData())));
+        Mat mat = new Mat(ed.getRows(), ed.getCols(), ed.getType());
+        mat.put(0, 0, Base64.getDecoder().decode(ed.getData()));
+        return mat;
+        //return new Mat(ed.getRows(), ed.getCols(), CV_8UC(ed.getType()), new BytePointer(Base64.getDecoder().decode(ed.getData())));
     }
-
 
     //Save image file
     private static void saveImage(Mat mat,String idInfo,String outputDir){
@@ -98,38 +118,10 @@ public class VideoObjectDetector implements Serializable {
         if(mat==null){
             System.out.println("Mat valid");
         }
-        boolean result = opencv_imgcodecs.imwrite(imagePath,mat);
+        boolean result = imwrite(imagePath,mat);
         if(!result ){
             System.out.println("No address valid");
-
         }
-
     }
 
-    /* open cv to javacpp cv
-    public static BufferedImage matToBufferedImage(Mat frame) {
-        int type = 0;
-        if (frame.channels() == 1) {
-            type = BufferedImage.TYPE_BYTE_GRAY;
-        } else if (frame.channels() == 3) {
-            type = BufferedImage.TYPE_3BYTE_BGR;
-        }
-        BufferedImage image = new BufferedImage(frame.width() ,frame.height(), type);
-        WritableRaster raster = image.getRaster();
-        DataBufferByte dataBuffer = (DataBufferByte) raster.getDataBuffer();
-        byte[] data = dataBuffer.getData();
-        frame.get(0, 0, data);
-        return image;
-    }
-
-
-    public static org.bytedeco.javacpp.opencv_core.Mat bufferedImageToMat(BufferedImage bi) {
-        OpenCVFrameConverter.ToMat cv = new OpenCVFrameConverter.ToMat();
-        return cv.convertToMat(new Java2DFrameConverter().convert(bi));
-    }
-
-    public static org.bytedeco.javacpp.opencv_core.Mat transformFormat(Mat frame){
-        return bufferedImageToMat(matToBufferedImage(frame));
-    }
-    */
 }
